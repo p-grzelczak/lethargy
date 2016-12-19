@@ -1,26 +1,23 @@
-root = exports ? this
+umd = (root, factory, exportsName) ->
+	if typeof define is 'function' and define.amd
+		define([], () ->
+    root[exportsName] = factory
+  )
+	else if typeof module is 'object' && module.exports
+		module.exports = factory
+	else
+		root[exportsName]= factory
 
-class root.Lethargy
+class Lethargy
   constructor: (stability, sensitivity, tolerance, delay) ->
-
-    # Stability is how many records to use to calculate the average
     @stability = if stability? then Math.abs stability else 8
-
-    # The wheelDelta threshold. If an event has a wheelDelta below this value, it will not register
     @sensitivity = if sensitivity? then 1 + Math.abs sensitivity else 100
-
-    # How much the old rolling average have to differ from the new rolling average for it to be deemed significant
     @tolerance = if tolerance? then 1 + Math.abs tolerance else 1.1
-
-    # Threshold for the amount of time between mousewheel events for them to be deemed separate
     @delay = if delay? then delay else 150
-
-    # Used internally and should not be manipulated
     @lastUpDeltas = (null for [1..(@stability * 2)])
     @lastDownDeltas = (null for [1..(@stability * 2)])
     @deltasTimestamp = (null for [1..(@stability * 2)])
 
-  # Checks whether the mousewheel event is an intent
   check: (e) ->
     # Use jQuery's e.originalEvent if available
     e = e.originalEvent || e
@@ -50,18 +47,13 @@ class root.Lethargy
     false;
 
   isInertia: (direction) ->
-    # Get the relevant last*Delta array
     lastDeltas = if direction == -1 then @lastDownDeltas else @lastUpDeltas
-
-    # If the array is not filled up yet, we cannot compare averages, so assume the scroll event to be intentional
     if lastDeltas[0] == null
       return direction
 
-    # If the last mousewheel occurred within the specified delay of the penultimate one, and their values are the same. We will assume that this is a trackpad with a constant profile, and will return false
     if @deltasTimestamp[(this.stability * 2) - 2] + @delay > Date.now() and lastDeltas[0] == lastDeltas[(@stability * 2) - 1]
       return false
 
-    # Check to see if the new rolling average (based on the last half of the lastDeltas array) is significantly higher than the old rolling average. If so return direction, else false
     lastDeltasOld = lastDeltas.slice(0, @stability)
     lastDeltasNew = lastDeltas.slice(@stability, (@stability * 2))
 
@@ -81,3 +73,5 @@ class root.Lethargy
 
   showLastDownDeltas: ->
     return @lastDownDeltas
+
+umd window || this, Lethargy, 'Lethargy'
